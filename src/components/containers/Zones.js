@@ -1,80 +1,77 @@
-import React, {Component} from 'react'
-import Zone from '../presentation/Zone'
+import React, { Component } from 'react'
+import {CreateZone, Zone} from '../presentation'
 import styles from './styles'
-import superagent from 'superagent'
+import { APIManager } from '../../utils'
 
-class Zones extends Component{
-  
-  constructor(){
+class Zones extends Component {
+
+  constructor() {
     super()
 
     this.state = {
-      zone:{
-        name:'',
-        zipCode:'',
-      },
-
-      list:[]
+      selected: 0,
+      list: []
     }
   }
 
-  componentDidMount(){
+
+  componentDidMount() {
     console.log('ComponentDidMount')
-
-    superagent
-    .get('/api/zone')
-    .query(null)
-    .set('Accept', 'application/json')
-    .end((err, response) => {
-
-      if(err){
-        alert('ERROR' + err)
+    APIManager.get('/api/zone', null, (err, response) => {
+      if (err) {
+        alert('ERROR' + err.message)
         return
       }
 
-      console.log(JSON.stringify(response.body))
-
-      let results = response.body.results
       this.setState({
-        list: results
+        list: response.results
       })
     })
   }
 
-  addZone(event){
-    let updatedList = Object.assign([],this.state.list)
-    updatedList.push(this.state.zone)
-    this.setState({
-      list: updatedList
+  addZone(zone) {
+
+    //let updatedZone = Object.assign({}, zone)
+    zone['zipCodes'] = zone.zipCode.split(',')
+
+    APIManager.post('/api/zone', zone, (err, response) => {
+      if (err) {
+        alert('ERROR' + err.message)
+        return
+      }
+
+      console.log('Created zone:' + JSON.stringify(response))
+      let updatedList = Object.assign([], this.state.list)
+      updatedList.push(response.result)
+      this.setState({
+        list: updatedList
+      })
     })
   }
 
-
-  updateZone(event){
-    let updatedZone = Object.assign({},this.state.zone)
-    updatedZone[event.target.id] = event.target.value
+  selectedZone(index){
+    console.log('selectZone')
     this.setState({
-      zone: updatedZone
+      selected: index
     })
   }
 
-  render(){
-    
+  render() {
+
     const listItems = this.state.list.map((zone, i) => {
-        return (
-          <li key={i}> <Zone currentZone = {zone} /> </li>
-        )
-    } )
+      let selected = (i==this.state.selected)
+      return (
+        <li key={i}> <Zone index={i} select = {this.selectedZone.bind(this)} isSelected = {selected} currentZone={zone} /> </li>
+      )
+    })
 
-    return(
+    return (
       <div>
         <ol>
           {listItems}
         </ol>
 
-        <input id="name"  onChange = {this.updateZone.bind(this)} className="form-control" type="text" placeholder="Name"/><br/>
-        <input id="zipCode" onChange = {this.updateZone.bind(this)} className="form-control" type="text" placeholder="ZipCode"/><br/>
-        <button onClick = {this.addZone.bind(this)} className="btn btn-danger">Add Zone</button>  
+        <CreateZone onCreate = {this.addZone.bind(this)}/>
       </div>
     )
   }
